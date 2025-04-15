@@ -2,13 +2,20 @@ module tb;
     localparam WIDTH = 16;
 
     logic               clk;
-    logic [WIDTH - 1:0] a;
-    logic [WIDTH - 1:0] b;
+    logic [    WIDTH:0] a_ext;
+    logic [    WIDTH:0] b_ext;
     logic               c_in;
     logic [WIDTH - 1:0] sum;
+    logic [    WIDTH:0] sum_ext;
     logic               c_out;
 
-    prefix_adder_16 dut (.*);
+    prefix_adder_16 u_prefix_adder_16 (
+        .a    (a_ext[WIDTH-1:0]),
+        .b    (b_ext[WIDTH-1:0]),
+        .c_in (c_in),
+        .sum  (sum),
+        .c_out(c_out)
+    );
 
     initial begin
         clk = '0;
@@ -23,13 +30,19 @@ module tb;
         repeat (1000) begin
             @(posedge clk);
 
-            a = $urandom();
-            b = $urandom();
+            a_ext[WIDTH] = '0;
+            b_ext[WIDTH] = '0;
+            a_ext[WIDTH-1:0] = $urandom();
+            b_ext[WIDTH-1:0] = $urandom();
 
             #1;
 
-            if (a + b !== sum) begin
-                $display("ERROR a: %h, b: %h, actual sum: %h, intended sum: %h", a, b, sum, a + b);
+            sum_ext = a_ext + b_ext;
+            if (sum_ext !== {c_out, sum}) begin
+                $display(
+                    "ERROR a: %h, b: %h, actual sum: %h, expected sum: %h, actual overflow: %b, expected overflow: %b",
+                    a_ext[WIDTH-1:0], b_ext[WIDTH-1:0], sum, sum_ext[WIDTH-1:0], c_out,
+                    sum_ext[WIDTH]);
                 $finish();
             end
         end
