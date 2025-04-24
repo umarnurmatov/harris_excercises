@@ -1,4 +1,5 @@
 `include "alu.svh"
+`include "prefix_adder/prefix_adder.sv"
 // basic 32-bit ALU
 // N - Negative, Z - Zero, C - Carry, V - oVerflow
 module alu (
@@ -15,7 +16,7 @@ module alu (
     wire c_out;
 
     // ADDER //
-    wire [WIDTH - 1:0] b_signed = control[0] ? b : ~b;
+    wire [WIDTH - 1:0] b_signed = control[0] ? ~b : b;
 
     prefix_adder_32 u_prefix_adder_32 (
         .a    (a),
@@ -26,12 +27,12 @@ module alu (
     );
 
     // FLAGS //
-    wire oflow = (~ (control[0] ^ a[WIDTH - 1] ^ b[WIDTH - 1])) // either sign(a) == sign(b) & control = ADD or sign(a) == sign(b) & control = SUB
-    & (a[WIDTH-1] ^ sum[WIDTH-1])  // sign(a) != sign(sum)
-    & (~control[1]);  // control == ADD | control == SUB
+    wire oflow = (~ (control[0] ^ a[WIDTH - 1] ^ b[WIDTH - 1])) // sign(a) == sign(b) & control = ADD|SUB
+    & (a[WIDTH-1] ^ result[WIDTH-1])  // sign(a) != sign(sum)
+    & (~control[1]);  // control == ADD|SUB
     wire carry = c_out & (~control[1]);
-    wire zero = &(~sum);
-    wire neg = sum[WIDTH-1];
+    wire zero = &(~result);
+    wire neg = result[WIDTH-1];
 
     assign flags = {neg, zero, carry, oflow};
 

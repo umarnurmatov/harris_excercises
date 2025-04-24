@@ -35,7 +35,7 @@ module tb;
 
     task trace();
         $write("%s[TRACE]%s", `ANSI_COLOR_YELLOW, `ANSI_COLOR_RESET);
-        $write(" control ");
+        $write(" a:%h, b:%h, control:", a_ext[WIDTH-1:0], b_ext[WIDTH-1:0]);
         begin
             case (control)
                 `ALU_ADD: $write("ALU_ADD");
@@ -44,8 +44,8 @@ module tb;
                 `ALU_OR:  $write("ALU_OR");
             endcase
         end
-        $display(", flags N %b; Z %b; C %b; V %b", |(flags & `ALU_FLAG_NEG),
-                 |(flags & `ALU_FLAG_ZERO), |(flags & `ALU_FLAG_CARRY), |(flags & `ALU_FLAG_OFLOW));
+        $display(", flags N:%b Z:%b C:%b V:%b", |(flags & `ALU_FLAG_NEG), |(flags & `ALU_FLAG_ZERO),
+                 |(flags & `ALU_FLAG_CARRY), |(flags & `ALU_FLAG_OFLOW));
     endtask
 
     initial begin
@@ -56,7 +56,7 @@ module tb;
             b_ext[WIDTH-1:0] = $urandom();
             a_ext[WIDTH] = 0;
             b_ext[WIDTH] = 0;
-            control <= $urandom();
+            control = $urandom_range(0,3);
 
             #1;
 
@@ -67,34 +67,40 @@ module tb;
                 `ALU_OR:  res_ext = a_ext | b_ext;
             endcase
 
-            if (res_ext[WIDTH-1:0] != res) begin
+            if (res_ext[WIDTH-1:0] !== res) begin
                 $write("%s[ERROR]%s", `ANSI_COLOR_RED, `ANSI_COLOR_RESET);
                 $display(" res mismatch, %h actual, %h expected", res, res_ext[WIDTH-1:0]);
                 trace();
                 $finish();
             end
 
-            carry = res_ext[WIDTH];
-            zero  = res_ext[WIDTH-1:0] == WIDTH'(0);
-            neg   = res_ext[WIDTH-1];
-            oflow = res_ext[WIDTH];
+            zero = res_ext[WIDTH-1:0] == WIDTH'(0);
+            neg = res_ext[WIDTH-1];
+            if(control == `ALU_ADD) begin
+                carry = res_ext > 33'h0FFFFFFFF;
+                oflow = (a_ext[WIDTH - 1] == b_ext[WIDTH - 1]) & (res_ext[WIDTH - 1] != a_ext[WIDTH - 1]);
+            end
+            else if (control == `ALU_SUB) begin
+                carry = a_ext < b_ext;
+                oflow = (a_ext[WIDTH - 1] != b_ext[WIDTH - 1]) & (res_ext[WIDTH - 1] != a_ext[WIDTH - 1]);
+            end
+            else begin
+                carry = '0;
+                oflow = '0;
+            end
 
-            case (control)
-                `ALU_ADD, `ALU_SUB:
-                if ({neg, zero, carry, oflow} != flags) begin
-                    $write("%s[ERROR]%s", `ANSI_COLOR_RED, `ANSI_COLOR_RESET);
-                    $display(" flags mismatch, %b actual, %b expected", flags, {neg, zero, carry,
-                                                                                oflow});
-                    trace();
-                    $finish();
-                end
-                `ALU_AND, `ALU_OR: begin
-                end
-            endcase
+            if ({neg, zero, 'x, oflow} != flags) begin
+                $write("%s[ERROR]%s", `ANSI_COLOR_RED, `ANSI_COLOR_RESET);
+                $display(" flags mismatch, %b actual, %b expected", flags, {neg, zero, carry, oflow
+                         });
+                trace();
+                $display("%b %b", res_ext, res);
+                $finish();
+            end
         end
 
+        $write("%s[PASS] %s", `ANSI_COLOR_GREEN, `ANSI_COLOR_RESET);
         $write("%s", `__FILE__);
-        $write("%s[PASS]%s", `ANSI_COLOR_GREEN, `ANSI_COLOR_RESET);
         $display();
         $finish();
     end

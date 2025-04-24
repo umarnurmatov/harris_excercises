@@ -1,3 +1,6 @@
+`ifndef PREFIX_ADDER_32
+`define PREFIX_ADDER_32
+
 // Ladner-Fischer prefix net
 module prefix_adder_32 (
     input [N-1:0] a,
@@ -135,7 +138,9 @@ module prefix_adder_32 (
         end
     endgenerate
 
-    assign c_out = (a[N-1] & b[N-1]) | ((a[N-1] | b[N-1]) & layer_4_g[N-1]);
+    assign c_out = layer_4_g[N-1];
 
 
 endmodule : prefix_adder_32
+
+`endif
